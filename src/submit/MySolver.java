@@ -31,51 +31,41 @@ public class MySolver implements Flow.Solver {
      * @param cfg The control flow graph to analyze.
      */
     public void visitCFG(ControlFlowGraph cfg) {
-
+		if (analysis.isForward()) {
+			processForward(cfg);
+		} else {
+			processBackward(cfg);
+		}
+       
+    }
+	
+	private void processForward(ControlFlowGraph cfg) {
         // this needs to come first.
         analysis.preprocess(cfg);
-
-		//QuadIterator cfgItr = new QuadIterator(cfg);
-		
-		// Set all the OUTs to NULL.
-		/*while (cfgItr.hasNext()) {
-			Quad q = cfgItr.next();
-			analysis.setOut(q, new Flow.DataflowObject());
-		}*/
-		// entry = analysis.getEntry(cfg);
-		
 		boolean repeatLoop = true;
-		int loopCounter = 1;
 		HashSet<Quad> exitIns;
 		while (repeatLoop == true){
 			repeatLoop = false;
-			//System.out.println("# loops: "+loopCounter);
 			exitIns = new HashSet<Quad>();
 			QuadIterator cfgItr = new QuadIterator(cfg);
 			Quad q;
 			Flow.DataflowObject in = analysis.getEntry();
 			Flow.DataflowObject out = analysis.getExit();
+			
 			while (cfgItr.hasNext()) {
-				// TODO: take the union of ALL the predecessors.
-				// TODO: Ask about multiple branches.
 				q = cfgItr.next();
 				Flow.DataflowObject prevIn = analysis.getIn(q);
 				Flow.DataflowObject prevOut = analysis.getOut(q);
 				Iterator predecessors = cfgItr.predecessors();
 				Quad pred = (Quad)predecessors.next();
-				//predecessors.remove();
-				//int numPreds = 1;
 				Flow.DataflowObject ins;
 				if (pred != null) {
-					//System.out.println("pred is NOT NULL");
 					ins = analysis.getOut(pred);
 					while (predecessors.hasNext()) {
 						pred = (Quad)predecessors.next();
 						ins.meetWith(analysis.getOut(pred));
 					}
 				} else {
-					//System.out.println("pred is NULL");
-					//ins.meetWtih(analysis.getEntry());
 					ins = in;
 				}				
 				if (!ins.equals(prevIn)) {
@@ -97,10 +87,7 @@ public class MySolver implements Flow.Solver {
 					repeatLoop = true;
 				}
 				in = out;
-				
-				//prevIns = out;
 			}
-			loopCounter++;
 			Iterator exitItr = exitIns.iterator();
 			Flow.DataflowObject exitVal = analysis.getOut((Quad)exitItr.next());
 			while (exitItr.hasNext()) {
@@ -108,11 +95,73 @@ public class MySolver implements Flow.Solver {
 			}
 			analysis.setExit(exitVal);
 		}
-		
-		
-		
-		
         // this needs to come last.
         analysis.postprocess(cfg);
-    }
+	}
+	
+	private void processBackward(ControlFlowGraph cfg) {
+        // this needs to come first.
+        analysis.preprocess(cfg);
+		boolean repeatLoop = true;
+		HashSet<Quad> entryOuts;
+		while (repeatLoop == true){
+			repeatLoop = false;
+			entryOuts = new HashSet<Quad>();
+			QuadIterator cfgItr = new QuadIterator(cfg, false);
+			Quad q;
+			Flow.DataflowObject in = analysis.getEntry();
+			Flow.DataflowObject out = analysis.getExit();
+			
+			while (cfgItr.hasPrevious()) {
+				//System.out.println("got here");
+				q = cfgItr.previous();
+				Flow.DataflowObject prevIn = analysis.getIn(q);
+				Flow.DataflowObject prevOut = analysis.getOut(q);
+				
+				Iterator successorsItr = cfgItr.successors();
+				Quad suc = (Quad)successorsItr.next();
+				Flow.DataflowObject outs;
+				if (suc != null) {
+					outs = analysis.getIn(suc);
+					//while (successorsItr.hasNext()) {
+					while (successorsItr.hasNext()) {
+						//System.out.println(successorsItr.hasNext());
+						suc = (Quad)successorsItr.next();
+						if (suc != null)
+							outs.meetWith(analysis.getIn(suc));
+					}
+				} else {
+					outs = out;
+				}				
+				if (!outs.equals(prevOut)) {
+					repeatLoop = true;
+				}
+				
+				Iterator predecessorsItr = cfgItr.predecessors();
+				while (predecessorsItr.hasNext()) {
+					Quad pred = (Quad)predecessorsItr.next();
+					if (pred == null) {
+						entryOuts.add(q);
+					}
+				}
+				
+				analysis.setOut(q, outs);
+				analysis.processQuad(q);
+				in = analysis.getIn(q);
+				if (!in.equals(prevIn)) {
+					repeatLoop = true;
+				}
+				out = in;
+			}
+			Iterator entryItr = entryOuts.iterator();
+			Flow.DataflowObject entryVal = analysis.getIn((Quad)entryItr.next());
+			while (entryItr.hasNext()) {
+				//System.out.println("GOT HERE");
+				entryVal.meetWith(analysis.getIn((Quad)entryItr.next()));
+			}
+			analysis.setEntry(entryVal);
+		}
+        // this needs to come last.
+        analysis.postprocess(cfg);
+	}
 }
