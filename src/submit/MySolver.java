@@ -53,6 +53,7 @@ public class MySolver implements Flow.Solver {
 			Flow.DataflowObject out = analysis.getExit();
 			
 			while (cfgItr.hasNext()) {
+				//System.out.println("got here");
 				q = cfgItr.next();
 				Flow.DataflowObject prevIn = analysis.getIn(q);
 				Flow.DataflowObject prevOut = analysis.getOut(q);
@@ -63,6 +64,7 @@ public class MySolver implements Flow.Solver {
 					ins = analysis.getOut(pred);
 					while (predecessors.hasNext()) {
 						pred = (Quad)predecessors.next();
+						System.out.println("Quad in: "+pred.getID());
 						ins.meetWith(analysis.getOut(pred));
 					}
 				} else {
