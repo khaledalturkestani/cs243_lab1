@@ -3,6 +3,13 @@ package submit;
 // some useful things to import. add any additional imports you need.
 import joeq.Compiler.Quad.*;
 import flow.Flow;
+import joeq.Compiler.Quad.Operand.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.TreeSet;
+import java.util.List;
+import java.util.Set;
+import java.util.ArrayList;
 
 /**
  * Skeleton class for implementing a reaching definition analysis
@@ -15,15 +22,80 @@ public class ReachingDefs implements Flow.Analysis {
      * You are free to change this class or move it to another file.
      */
     public class MyDataflowObject implements Flow.DataflowObject {
+		private HashMap<Integer, String> defs;
         /**
          * Methods from the Flow.DataflowObject interface.
          * See Flow.java for the meaning of these methods.
          * These need to be filled in.
          */
-        public void setToTop() {}
+		public MyDataflowObject() {
+			defs = new HashMap<Integer, String>();
+		}
+		
+		public void setToTop() {}
+		
         public void setToBottom() {}
-        public void meetWith (Flow.DataflowObject o) {}
-        public void copy (Flow.DataflowObject o) {}
+			
+        public void meetWith (Flow.DataflowObject o) {
+			
+			HashMap<Integer, String> defsToMeetWith = ((MyDataflowObject)o).getDefs();
+			Iterator itr = defsToMeetWith.keySet().iterator();
+			while (itr.hasNext()) {
+				Integer d = (Integer)itr.next();
+				defs.put(d, new String(defsToMeetWith.get(d)));
+			}
+        }
+		
+		public void removeDef(String reg) {
+			if (!defs.containsValue(reg)) {
+				return;
+			}
+			ArrayList<Integer> keys = new ArrayList<Integer>();
+			Iterator itr = defs.keySet().iterator();
+			while (itr.hasNext()) {
+				Integer d = (Integer)itr.next();
+				String v = defs.get(d);
+				if (v.equals(reg)) {
+					keys.add(d);
+				}
+			}
+			
+			Iterator itr2 = keys.iterator();
+			while (itr2.hasNext()) {
+				Integer d = (Integer)itr2.next();
+				defs.remove(d);
+			}
+		}
+		
+		public void addDef(Integer d, String r) {
+			defs.put(d, r);
+		}
+		
+        public void copy (Flow.DataflowObject o) {
+			defs.clear();
+        	defs.putAll(((MyDataflowObject)o).getDefs());
+        }
+			
+		public HashMap<Integer, String> getDefs() {
+			return (new HashMap(defs));
+		}
+		
+		public void setDefs(HashMap<Integer, String> d) {
+			defs.clear();
+			defs.putAll(d);
+		}
+		
+        @Override
+        public boolean equals (Object o) {
+            if (o instanceof MyDataflowObject) {
+                MyDataflowObject a = (MyDataflowObject) o;
+                if (defs.equals(a.getDefs())) {
+                    return true;
+				}
+				return false;
+            }
+            return false;
+        }
 
         /**
          * toString() method for the dataflow objects which is used
@@ -35,7 +107,24 @@ public class ReachingDefs implements Flow.Analysis {
          * your reaching definitions analysis must match this exactly.
          */
         @Override
-        public String toString() { return ""; }
+        public String toString() { 
+			TreeSet<Integer> sortedDefs = new TreeSet<Integer>();
+			Iterator defsItr = defs.keySet().iterator();
+			while (defsItr.hasNext()) {
+				Integer d = (Integer)defsItr.next();
+				sortedDefs.add(d);
+			}
+			String str = "[";
+			Iterator sortedDefsItr = sortedDefs.iterator();
+			while (sortedDefsItr.hasNext()) {
+				Integer defNum = (Integer)sortedDefsItr.next();
+				str += defNum.intValue();
+				if (sortedDefsItr.hasNext())
+					str += ", ";
+			}
+			str += "]";
+			return str; 
+		}
     }
 
     /**
@@ -86,7 +175,7 @@ public class ReachingDefs implements Flow.Analysis {
 
         /************************************************
          * Your remaining initialization code goes here *
-         ************************************************/
+         ************************************************/			
     }
 
     /**
@@ -114,15 +203,33 @@ public class ReachingDefs implements Flow.Analysis {
      * See Flow.java for the meaning of these methods.
      * These need to be filled in.
      */
-    public boolean isForward () { return false; }
-    public Flow.DataflowObject getEntry() { return null; }
-    public Flow.DataflowObject getExit() { return null; }
-    public void setEntry(Flow.DataflowObject value) {}
-    public void setExit(Flow.DataflowObject value) {}
-    public Flow.DataflowObject getIn(Quad q) { return null; }
-    public Flow.DataflowObject getOut(Quad q) { return null; }
-    public void setIn(Quad q, Flow.DataflowObject value) {}
-    public void setOut(Quad q, Flow.DataflowObject value) {}
-    public Flow.DataflowObject newTempVar() { return null; }
-    public void processQuad(Quad q) {}
+    public boolean isForward () { return true; }
+    public Flow.DataflowObject getEntry() { return entry; }
+    public Flow.DataflowObject getExit() { return exit; }
+    public void setEntry(Flow.DataflowObject value) { entry.copy(value); }
+    public void setExit(Flow.DataflowObject value) { exit.copy(value); }
+    public Flow.DataflowObject getIn(Quad q) { return in[q.getID()]; }
+    
+	public Flow.DataflowObject getOut(Quad q) { 
+		MyDataflowObject retVal = new MyDataflowObject();
+		retVal.copy(out[q.getID()]);
+		return retVal; 
+	}
+    public void setIn(Quad q, Flow.DataflowObject value) {
+		in[q.getID()].copy(value);
+    }
+    public void setOut(Quad q, Flow.DataflowObject value) {
+		out[q.getID()].copy(value);
+    }
+    public Flow.DataflowObject newTempVar() { return new MyDataflowObject(); }
+    public void processQuad(Quad q) {
+		MyDataflowObject outDefs = new MyDataflowObject();
+		outDefs.copy(in[q.getID()]);
+        for (RegisterOperand def : q.getDefinedRegisters()) {
+			String defStr = def.getRegister().toString();
+			outDefs.removeDef(defStr);
+			outDefs.addDef(new Integer(q.getID()), defStr);
+        }
+		out[q.getID()].copy(outDefs);
+    }
 }
