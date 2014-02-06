@@ -23,7 +23,6 @@ public class ReachingDefs implements Flow.Analysis {
      */
     public class MyDataflowObject implements Flow.DataflowObject {
 		private HashMap<Integer, String> defs;
-		//private int state; // 0 = udef;
         /**
          * Methods from the Flow.DataflowObject interface.
          * See Flow.java for the meaning of these methods.
@@ -33,59 +32,27 @@ public class ReachingDefs implements Flow.Analysis {
 			defs = new HashMap<Integer, String>();
 		}
 		
-		/*public MyDataflowObject(MyDataflowObject toCopy) {
-			defs = new HashMap<
-		}*/
-		public void setToTop() {
-			//setUndef();
-		}
-        public void setToBottom() {
-        	//setNAC();
-        }
-        public void meetWith (Flow.DataflowObject o) {
-			//Iterator tmpItr = defs.keySet().iterator();
-			//System.out.println("Meeting with: "+((MyDataflowObject)o).toString());
-			/*String tmpStr = "[";
-			while (tmpItr.hasNext()) {
-				String v = (Integer)tmpItr.next();
-				tmpStr = tmpStr + v + ", ";
-			}
-			tmpStr += "]";*/
-			//System.out.println(tmpStr);
+		public void setToTop() {}
+		
+        public void setToBottom() {}
 			
-			//System.out.println("Before: "+this.toString());
+        public void meetWith (Flow.DataflowObject o) {
+			
 			HashMap<Integer, String> defsToMeetWith = ((MyDataflowObject)o).getDefs();
 			Iterator itr = defsToMeetWith.keySet().iterator();
-			//String str = "[";
-			//System.out.println("Defs Size: "+defs.size());
-			//System.out.println("Meet Size: "+defsToMeetWith.size());
 			while (itr.hasNext()) {
 				Integer d = (Integer)itr.next();
-				//System.out.println("d: "+defsToMeetWith.get(d));
-				//str = str + definedVar + ", ";
-				//if (!defs.containsKey(definedVar))
-				//removeDef(defsToMeetWith.get(d));	
 				defs.put(d, new String(defsToMeetWith.get(d)));
 			}
-			//str += "]";
-			//System.out.println(str);
-			//System.out.println("After: "+this.toString());
-        	//defs.putAll(defsToMeetWith);
         }
 		
 		public void removeDef(String reg) {
-			//System.out.println("removeDefs. Size: "+defs.size());
-			//System.out.println("removeDefs. Value: "+reg);
-			
 			if (!defs.containsValue(reg)) {
-				//System.out.println("doesn't contain value");
 				return;
 			}
 			ArrayList<Integer> keys = new ArrayList<Integer>();
-			//System.out.println("keySet size:  "+set.size());
 			Iterator itr = defs.keySet().iterator();
 			while (itr.hasNext()) {
-				//System.out.println("val: "+(Integer)o);
 				Integer d = (Integer)itr.next();
 				String v = defs.get(d);
 				if (v.equals(reg)) {
@@ -95,7 +62,6 @@ public class ReachingDefs implements Flow.Analysis {
 			
 			Iterator itr2 = keys.iterator();
 			while (itr2.hasNext()) {
-				//System.out.println("val: "+(Integer)o);
 				Integer d = (Integer)itr2.next();
 				defs.remove(d);
 			}
@@ -209,18 +175,7 @@ public class ReachingDefs implements Flow.Analysis {
 
         /************************************************
          * Your remaining initialization code goes here *
-         ************************************************/
-		/*
-		QuadIterator quadItr = new QuadIterator(cfg);
-		while (quadItr.hasNext()) {
-			Quad q = quadItr.next();
-			int id = q.getID();
-			System.out.println("ID: "+id);
-            for (RegisterOperand def : q.getDefinedRegisters()) {
-                System.out.println(def.getRegister().toString());
-            }
-		}	*/
-			
+         ************************************************/			
     }
 
     /**
@@ -261,35 +216,20 @@ public class ReachingDefs implements Flow.Analysis {
 		return retVal; 
 	}
     public void setIn(Quad q, Flow.DataflowObject value) {
-    	//in[q.getID()].clear();
 		in[q.getID()].copy(value);
     }
     public void setOut(Quad q, Flow.DataflowObject value) {
-    	//out[q.getID()].clear();
 		out[q.getID()].copy(value);
     }
     public Flow.DataflowObject newTempVar() { return new MyDataflowObject(); }
     public void processQuad(Quad q) {
 		MyDataflowObject outDefs = new MyDataflowObject();
 		outDefs.copy(in[q.getID()]);
-    	//HashMap<Integer, String> defs = outDefs.getDefs();
-		//System.out.printf("Before- id: "+q.getID()+", in: "+in[q.getID()].toString()+", out: "+out[q.getID()].toString()+", ");
         for (RegisterOperand def : q.getDefinedRegisters()) {
-			//System.out.println("def reg: "+ def.getRegister().toString());
 			String defStr = def.getRegister().toString();
 			outDefs.removeDef(defStr);
 			outDefs.addDef(new Integer(q.getID()), defStr);
-			//defs.put(new Integer(q.getID()), defStr);
         }
-		
-		/*List<RegisterOperand> regs  = q.getDefinedRegisters();
-		if (regs.size() > 0)
-			defs.put(regs.get(0).toString(), new Integer(q.getID()));
-		*/
-		//outDefs.setDefs(defs);
 		out[q.getID()].copy(outDefs);
-		//System.out.printf("After- id: "+q.getID()+", out: "+out[q.getID()].toString()+"\n");
-		//if (out.length > 4)
-		//	System.out.printf("---4: "+out[4].toString());
     }
 }
