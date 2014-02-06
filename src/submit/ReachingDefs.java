@@ -8,7 +8,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.TreeSet;
 import java.util.List;
-	
+import java.util.Set;
+import java.util.ArrayList;
+
 /**
  * Skeleton class for implementing a reaching definition analysis
  * using the Flow.Analysis interface.
@@ -20,7 +22,7 @@ public class ReachingDefs implements Flow.Analysis {
      * You are free to change this class or move it to another file.
      */
     public class MyDataflowObject implements Flow.DataflowObject {
-		private HashMap<String, Integer> defs;
+		private HashMap<Integer, String> defs;
 		//private int state; // 0 = udef;
         /**
          * Methods from the Flow.DataflowObject interface.
@@ -28,8 +30,12 @@ public class ReachingDefs implements Flow.Analysis {
          * These need to be filled in.
          */
 		public MyDataflowObject() {
-			defs = new HashMap<String, Integer>();
+			defs = new HashMap<Integer, String>();
 		}
+		
+		/*public MyDataflowObject(MyDataflowObject toCopy) {
+			defs = new HashMap<
+		}*/
 		public void setToTop() {
 			//setUndef();
 		}
@@ -37,41 +43,78 @@ public class ReachingDefs implements Flow.Analysis {
         	//setNAC();
         }
         public void meetWith (Flow.DataflowObject o) {
-			Iterator tmpItr = defs.keySet().iterator();
+			//Iterator tmpItr = defs.keySet().iterator();
 			//System.out.println("Meeting with: "+((MyDataflowObject)o).toString());
-			String tmpStr = "[";
+			/*String tmpStr = "[";
 			while (tmpItr.hasNext()) {
-				String v = (String)tmpItr.next();
+				String v = (Integer)tmpItr.next();
 				tmpStr = tmpStr + v + ", ";
 			}
-			tmpStr += "]";
+			tmpStr += "]";*/
 			//System.out.println(tmpStr);
 			
 			//System.out.println("Before: "+this.toString());
-			HashMap<String, Integer> defsToMeetWith = ((MyDataflowObject)o).getDefs();
+			HashMap<Integer, String> defsToMeetWith = ((MyDataflowObject)o).getDefs();
 			Iterator itr = defsToMeetWith.keySet().iterator();
-			String str = "[";
+			//String str = "[";
+			//System.out.println("Defs Size: "+defs.size());
+			//System.out.println("Meet Size: "+defsToMeetWith.size());
 			while (itr.hasNext()) {
-				String definedVar = (String)itr.next();
-				str = str + definedVar + ", ";
+				Integer d = (Integer)itr.next();
+				//System.out.println("d: "+defsToMeetWith.get(d));
+				//str = str + definedVar + ", ";
 				//if (!defs.containsKey(definedVar))
-				defs.put(definedVar, defsToMeetWith.get(definedVar));
+				//removeDef(defsToMeetWith.get(d));	
+				defs.put(d, new String(defsToMeetWith.get(d)));
 			}
-			str += "]";
+			//str += "]";
 			//System.out.println(str);
 			//System.out.println("After: "+this.toString());
         	//defs.putAll(defsToMeetWith);
         }
+		
+		public void removeDef(String reg) {
+			//System.out.println("removeDefs. Size: "+defs.size());
+			//System.out.println("removeDefs. Value: "+reg);
+			
+			if (!defs.containsValue(reg)) {
+				//System.out.println("doesn't contain value");
+				return;
+			}
+			ArrayList<Integer> keys = new ArrayList<Integer>();
+			//System.out.println("keySet size:  "+set.size());
+			Iterator itr = defs.keySet().iterator();
+			while (itr.hasNext()) {
+				//System.out.println("val: "+(Integer)o);
+				Integer d = (Integer)itr.next();
+				String v = defs.get(d);
+				if (v.equals(reg)) {
+					keys.add(d);
+				}
+			}
+			
+			Iterator itr2 = keys.iterator();
+			while (itr2.hasNext()) {
+				//System.out.println("val: "+(Integer)o);
+				Integer d = (Integer)itr2.next();
+				defs.remove(d);
+			}
+		}
+		
+		public void addDef(Integer d, String r) {
+			defs.put(d, r);
+		}
+		
         public void copy (Flow.DataflowObject o) {
 			defs.clear();
         	defs.putAll(((MyDataflowObject)o).getDefs());
         }
 			
-		public HashMap<String, Integer> getDefs() {
-			return new HashMap(defs);
+		public HashMap<Integer, String> getDefs() {
+			return (new HashMap(defs));
 		}
 		
-		public void setDefs(HashMap<String, Integer> d) {
+		public void setDefs(HashMap<Integer, String> d) {
 			defs.clear();
 			defs.putAll(d);
 		}
@@ -102,9 +145,8 @@ public class ReachingDefs implements Flow.Analysis {
 			TreeSet<Integer> sortedDefs = new TreeSet<Integer>();
 			Iterator defsItr = defs.keySet().iterator();
 			while (defsItr.hasNext()) {
-				String definedVar = (String)defsItr.next();
-				Integer defNum = defs.get(definedVar);
-				sortedDefs.add(defNum);
+				Integer d = (Integer)defsItr.next();
+				sortedDefs.add(d);
 			}
 			String str = "[";
 			Iterator sortedDefsItr = sortedDefs.iterator();
@@ -212,7 +254,12 @@ public class ReachingDefs implements Flow.Analysis {
     public void setEntry(Flow.DataflowObject value) { entry.copy(value); }
     public void setExit(Flow.DataflowObject value) { exit.copy(value); }
     public Flow.DataflowObject getIn(Quad q) { return in[q.getID()]; }
-    public Flow.DataflowObject getOut(Quad q) { return out[q.getID()]; }
+    
+	public Flow.DataflowObject getOut(Quad q) { 
+		MyDataflowObject retVal = new MyDataflowObject();
+		retVal.copy(out[q.getID()]);
+		return retVal; 
+	}
     public void setIn(Quad q, Flow.DataflowObject value) {
     	//in[q.getID()].clear();
 		in[q.getID()].copy(value);
@@ -225,17 +272,24 @@ public class ReachingDefs implements Flow.Analysis {
     public void processQuad(Quad q) {
 		MyDataflowObject outDefs = new MyDataflowObject();
 		outDefs.copy(in[q.getID()]);
-    	HashMap<String, Integer> defs = outDefs.getDefs();
+    	//HashMap<Integer, String> defs = outDefs.getDefs();
+		//System.out.printf("Before- id: "+q.getID()+", in: "+in[q.getID()].toString()+", out: "+out[q.getID()].toString()+", ");
         for (RegisterOperand def : q.getDefinedRegisters()) {
-			//System.out.println("def reg: "+ def.toString());
-			defs.put(def.getRegister().toString(), new Integer(q.getID()));
+			//System.out.println("def reg: "+ def.getRegister().toString());
+			String defStr = def.getRegister().toString();
+			outDefs.removeDef(defStr);
+			outDefs.addDef(new Integer(q.getID()), defStr);
+			//defs.put(new Integer(q.getID()), defStr);
         }
 		
 		/*List<RegisterOperand> regs  = q.getDefinedRegisters();
 		if (regs.size() > 0)
 			defs.put(regs.get(0).toString(), new Integer(q.getID()));
 		*/
-		outDefs.setDefs(defs);
+		//outDefs.setDefs(defs);
 		out[q.getID()].copy(outDefs);
+		//System.out.printf("After- id: "+q.getID()+", out: "+out[q.getID()].toString()+"\n");
+		//if (out.length > 4)
+		//	System.out.printf("---4: "+out[4].toString());
     }
 }

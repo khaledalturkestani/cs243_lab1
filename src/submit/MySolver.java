@@ -44,7 +44,9 @@ public class MySolver implements Flow.Solver {
         analysis.preprocess(cfg);
 		boolean repeatLoop = true;
 		HashSet<Quad> exitIns;
+		//int counter = 1;
 		while (repeatLoop == true){
+			//System.out.println("counter: "+counter++);
 			repeatLoop = false;
 			exitIns = new HashSet<Quad>();
 			QuadIterator cfgItr = new QuadIterator(cfg);
@@ -64,7 +66,10 @@ public class MySolver implements Flow.Solver {
 					ins = analysis.getOut(pred);
 					while (predecessors.hasNext()) {
 						pred = (Quad)predecessors.next();
-						System.out.println("Quad in: "+pred.getID());
+						//if (pred == null)
+						//	System.out.println("pred is NULL");
+						//else System.out.println("pred is NOT NULL");
+						//System.out.println("Quad in: "+pred.getID());
 						ins.meetWith(analysis.getOut(pred));
 					}
 				} else {
@@ -96,6 +101,7 @@ public class MySolver implements Flow.Solver {
 				exitVal.meetWith(analysis.getOut((Quad)exitItr.next()));
 			}
 			analysis.setExit(exitVal);
+			//System.out.println("\n\n\n\n");	
 		}
         // this needs to come last.
         analysis.postprocess(cfg);
@@ -154,6 +160,8 @@ public class MySolver implements Flow.Solver {
 					repeatLoop = true;
 				}
 				out = in;
+			
+			
 			}
 			Iterator entryItr = entryOuts.iterator();
 			Flow.DataflowObject entryVal = analysis.getIn((Quad)entryItr.next());
