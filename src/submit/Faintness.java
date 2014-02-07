@@ -246,31 +246,22 @@ public class Faintness implements Flow.Analysis {
 
             Operator opr = q.getOperator();
 
-            // Variables in used registers may not be faint
-            for (RegisterOperand use : q.getUsedRegisters()) {
-               
-              val.killVar(use.getRegister().toString());
-
-            }
-
-
             String dest = "";
 
             for (RegisterOperand def : q.getDefinedRegisters()) {
 
-                dest = def.getRegister().toString();
-               
+                dest = def.getRegister().toString();               
 
             }
 
             // Faintness propagation to variables in used registers
             // if operator is Move or Binary
-            if (val.contains(dest) && ((opr instanceof Operator.Move) || (opr instanceof Operator.Binary))) {
+            if (!val.contains(dest) || !((opr instanceof Operator.Move) || (opr instanceof Operator.Binary))) {
 
            
               for (RegisterOperand use : q.getUsedRegisters()) {
 
-                  val.genVar(use.getRegister().toString());
+                  val.killVar(use.getRegister().toString());
 
 
               }
