@@ -3,6 +3,8 @@ package submit;
 // some useful things to import. add any additional imports you need.
 import joeq.Compiler.Quad.*;
 import flow.Flow;
+import java.util.*;
+import joeq.Compiler.Quad.Operand.*;
 
 /**
  * Skeleton class for implementing a faint variable analysis
@@ -14,7 +16,7 @@ public class Faintness implements Flow.Analysis {
      * Class for the dataflow objects in the Faintness analysis.
      * You are free to change this class or move it to another file.
      */
-    public class MyDataflowObject implements Flow.DataflowObject {
+    public static class VarSet implements Flow.DataflowObject {
         private Set<String> set;
         public static Set<String> universalSet;
         public VarSet() { set = new TreeSet<String>(); }
@@ -30,6 +32,12 @@ public class Faintness implements Flow.Analysis {
             VarSet a = (VarSet)o;
             set.retainAll(a.set);
 
+        }
+
+        public boolean contains(String register) {
+
+            return set.contains(register);
+       
         }
 
         public void copy (Flow.DataflowObject o) {
@@ -105,6 +113,7 @@ public class Faintness implements Flow.Analysis {
         // allocate the in and out arrays.
         in = new VarSet[max];
         out = new VarSet[max];
+        qit = new QuadIterator(cfg);
 
         Set<String> s = new TreeSet<String>();
         VarSet.universalSet = s;
@@ -126,15 +135,18 @@ public class Faintness implements Flow.Analysis {
         }
 
         // initialize the entry and exit points.
-        entry = s;
+        entry = new VarSet();
         exit = new VarSet();
+        exit.setToTop();
+       
         transferfn.val = new VarSet();
 
         // initialize the contents of in and out.
         qit = new QuadIterator(cfg);
         while (qit.hasNext()) {
             int id = qit.next().getID();
-            in[id] = s;
+            in[id] = new VarSet();
+            in[id].setToTop();
             out[id] = new VarSet();
         }
 
@@ -231,49 +243,50 @@ public class Faintness implements Flow.Analysis {
         VarSet val;
         @Override
         public void visitQuad(Quad q) {
-            for (RegisterOperand use : q.getDefinedRegisters()) {
-                val.killVar(use.getRegister().toString());
-            }
-            for (RegisterOperand def : q.getUsedRegisters()) {
-                val.genVar(def.getRegister().toString());
-            }
 
             Operator opr = q.getOperator();
-            String dest;
 
-            if (opr == Operator.Move.INSTANCE) {
-
-                UnmodifiableList.Operand operand_list = q.getAllOperands();
-                Iterator<Operand> operand_iterator = operand_list.iterator();
-                while (operand_iterator.hasNext()) {
-
-                    String op = Operator.Move.getSrc(q).getRegister().toString();
-                    dest = Operator.Move.getDest(q).getRegister().toString();
-
-                    if (val.contains(dest)) {
-
-                        val.genVar(op);
-
-                    }
-
-                }
-
-
-            } else if (opr == Operator.Binary.INSTANCE) {
-  
-                String op1 =  Operator.Binary.getSrc1(q).getRegister().toString();
-                String op2 =  Operator.Binary.getSrc2(q).getRegister().toString();
-                dest = Operator.Binary.getDest(q).getRegister().toString();
-
-
-                if (val.contains(dest)) {
-
-                    val.genVar(op1);
-                    val.genVar(op2);
-
-                }
+            // Variables in used registers may not be faint
+            for (RegisterOperand use : q.getUsedRegisters()) {
+               
+              val.killVar(use.getRegister().toString());
 
             }
+
+
+            String dest = "";
+
+            for (RegisterOperand def : q.getDefinedRegisters()) {
+
+                dest = def.getRegister().toString();
+               
+
+            }
+
+            // Faintness propagation to variables in used registers
+            // if operator is Move or Binary
+            if (val.contains(dest) && ((opr instanceof Operator.Move) || (opr instanceof Operator.Binary))) {
+
+           
+              for (RegisterOperand use : q.getUsedRegisters()) {
+
+                  val.genVar(use.getRegister().toString());
+
+
+              }
+                 
+
+            }
+
+            // Variables in defined registers are dead (faint)
+            for (RegisterOperand def : q.getDefinedRegisters()) {
+
+                val.genVar(def.getRegister().toString());
+               
+
+            }
+
+                    
         }
     }
 
