@@ -247,25 +247,36 @@ public class Faintness implements Flow.Analysis {
             Operator opr = q.getOperator();
 
             String dest = "";
-			//System.out.println(dest);
-            for (RegisterOperand def : q.getDefinedRegisters()) {
-
-                dest = def.getRegister().toString();               
-
-            } 
+            List<RegisterOperand> defs = q.getDefinedRegisters();
+			if (defs.size() > 0) {
+				Iterator itr = defs.iterator();
+				while (itr.hasNext()) {
+					RegisterOperand def = (RegisterOperand)itr.next();
+	                dest = def.getRegister().toString();
+					boolean was_faint = val.contains(dest);
+					val.genVar(dest);
+					//TreeSet<String> all_used = new TreeSet<String>();
 			
-            // Faintness propagation to variables in used registers
-            // if operator is Move or Binary
-            if (!val.contains(dest) || !((opr instanceof Operator.Move) || (opr instanceof Operator.Binary))) {           
+		            // Faintness propagation to variables in used registers
+		            // if operator is Move or Binary
+		            if (!was_faint || !((opr instanceof Operator.Move) || (opr instanceof Operator.Binary))) {           
+		                for (RegisterOperand use : q.getUsedRegisters()) {
+		                    val.killVar(use.getRegister().toString());
+							//all_used.add(dest);
+					    } 
+		   		    } 
+				} 
+			} else {
                 for (RegisterOperand use : q.getUsedRegisters()) {
                     val.killVar(use.getRegister().toString());
 			    } 
-   		    } 
-
+			}
+			
             // Variables in defined registers are dead (faint)
-            for (RegisterOperand def : q.getDefinedRegisters()) {
-				val.genVar(def.getRegister().toString());
-			} 			
+            //for (RegisterOperand def : q.getDefinedRegisters()) {
+			//	if (!val.contains(dest) && !all_used.contains(def.getRegister().toString()))
+			//		val.genVar(def.getRegister().toString());
+			//} 			
         }
     }
 

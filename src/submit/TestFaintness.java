@@ -76,7 +76,4 @@ class TestFaintness {
 		}
 		return y;
 	}
-		
-	
-		
 }
